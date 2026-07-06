@@ -113,6 +113,11 @@ targets:
         git: "https://github.com/nlohmann/json.git"
         cmake_target: nlohmann_json    # When CMake target name differs from package name
 
+      # Header-only library bypass example
+      - name: magic_enum
+        git: "https://github.com/Neargye/magic_enum.git"
+        type: header_only
+
       # Monorepo support via subdir
       - name: core_utils
         git: "https://github.com/company/monorepo.git"

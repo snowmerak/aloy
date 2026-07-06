@@ -113,6 +113,11 @@ targets:
         git: "https://github.com/nlohmann/json.git"
         cmake_target: nlohmann_json    # CMake 타겟명과 패키지명이 다를 경우
 
+      # 헤더 온리 라이브러리 연동 예시
+      - name: magic_enum
+        git: "https://github.com/Neargye/magic_enum.git"
+        type: header_only
+
       # 모노레포 지원 (subdir 옵션)
       - name: core_utils
         git: "https://github.com/company/monorepo.git"
