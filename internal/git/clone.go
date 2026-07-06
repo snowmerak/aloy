@@ -37,10 +37,14 @@ func FetchTags(repoPath string) error {
 func Checkout(repoPath, ref string) error {
 	cmd := exec.Command("git", "checkout", "--detach", ref)
 	cmd.Dir = repoPath
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
 	if err := cmd.Run(); err != nil {
-		return fmt.Errorf("git checkout %s in %s: %w", ref, repoPath, err)
+		cmdOrigin := exec.Command("git", "checkout", "--detach", "origin/"+ref)
+		cmdOrigin.Dir = repoPath
+		cmdOrigin.Stdout = os.Stdout
+		cmdOrigin.Stderr = os.Stderr
+		if err2 := cmdOrigin.Run(); err2 != nil {
+			return fmt.Errorf("git checkout %s (and origin/%s) failed in %s: %w (origin err: %v)", ref, ref, repoPath, err, err2)
+		}
 	}
 	return nil
 }

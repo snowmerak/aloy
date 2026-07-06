@@ -126,6 +126,19 @@ func writeDependencies(b *strings.Builder, cfg *model.ProjectConfig, resolvedDep
 			targetName = dep.CMakeTarget
 		}
 
+		if rd.Type == "header_only" {
+			repoPath := filepath.Join(projectRoot, resolver.ModulesDir, rd.RepoDir, rd.Subdir)
+			includeSub := findHeaderIncludeDir(repoPath)
+			includeRelPath := filepath.Join(resolver.ModulesDir, rd.RepoDir, rd.Subdir, includeSub)
+			includeCMakePath := filepath.ToSlash(includeRelPath)
+
+			fmt.Fprintf(b, "add_library(%s INTERFACE IMPORTED)\n", targetName)
+			fmt.Fprintf(b, "set_target_properties(%s PROPERTIES\n", targetName)
+			fmt.Fprintf(b, "    INTERFACE_INCLUDE_DIRECTORIES \"${CMAKE_CURRENT_SOURCE_DIR}/%s\"\n", includeCMakePath)
+			fmt.Fprintf(b, ")\n")
+			continue
+		}
+
 		if rd.Type == "meson" {
 			installDir := filepath.Join(projectRoot, resolver.ModulesDir, rd.LogicalName+"_install")
 			libPaths, err := findLibraryFiles(installDir)
@@ -212,6 +225,17 @@ func findLibraryFiles(installDir string) ([]string, error) {
 	}
 
 	return candidates, nil
+}
+
+func findHeaderIncludeDir(repoPath string) string {
+	candidates := []string{"single_include", "include", "includes", "src"}
+	for _, c := range candidates {
+		path := filepath.Join(repoPath, c)
+		if info, err := os.Stat(path); err == nil && info.IsDir() {
+			return c
+		}
+	}
+	return ""
 }
 
 func writeTargets(b *strings.Builder, cfg *model.ProjectConfig, projectRoot string) error {

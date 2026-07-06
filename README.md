@@ -129,7 +129,7 @@ inject_cmake: "cmake/extra_logic.cmake"
 | `name` | Yes | Package name (auto-inferred from Git URL) |
 | `git` | Cond. | Git repository URL (not needed for system type) |
 | `version` | No | SemVer constraint (`^1.2.0`, `~1.0`, `>=1.0.0 <2.0.0`) |
-| `type` | No | Dependency type (`"system"`, `"cmake"`, `"meson"`, `"aloy"`). Omitted defaults to auto-detecting based on the files in repository. |
+| `type` | No | Dependency type (`"system"`, `"cmake"`, `"meson"`, `"aloy"`, `"header_only"`). Omitted defaults to auto-detecting based on the files in repository. |
 | `alias` | No | Alias — used as the directory name and reference name |
 | `subdir` | No | Subdirectory path for monorepo packages (e.g. `libs/foo`) |
 | `cmake_target` | No | CMake target name for linking (when it differs from the package name) |
@@ -223,6 +223,14 @@ When `aloy` detects a dependency of type `"meson"` (either explicitly specified 
 1. During `aloy sync`, it executes `meson setup build --prefix=<install_path>`, `meson compile`, and `meson install` to build and stage the package locally.
 2. The compiled outputs (static/shared libraries and headers) are gathered inside `.my_modules/<logical_name>_install/`.
 3. In the root `CMakeLists.txt`, an `INTERFACE IMPORTED` target is generated. All compiled libraries found in the staging area are linked via `INTERFACE_LINK_LIBRARIES` and headers are linked via `INTERFACE_INCLUDE_DIRECTORIES`.
+
+### Header-only Integration
+
+When `aloy` detects a dependency of type `"header_only"` (either explicitly specified via `type: header_only` or automatically detected when no `project.yaml`, `meson.build`, or `CMakeLists.txt` exist in the repository):
+
+1. During `aloy sync`, it skips all compilation/build stages entirely.
+2. It automatically scans the repository for common header directories (specifically searching for `single_include`, `include`, `includes`, `src`, or falling back to the root directory).
+3. In the root `CMakeLists.txt`, `aloy` generates an `INTERFACE IMPORTED` target and maps the discovered header folder path under `INTERFACE_INCLUDE_DIRECTORIES`.
 
 ### Transitive Dependencies and `cmake_target`
 

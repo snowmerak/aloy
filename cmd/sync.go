@@ -66,6 +66,9 @@ func runSync(dir string) error {
 			}
 			continue
 		}
+		if dep.Type == "header_only" {
+			continue
+		}
 		if dep.IsAloyPackage {
 			modulePath := filepath.Join(dir, resolver.ModulesDir, dep.RepoDir, dep.Subdir)
 			fmt.Printf("  Generating CMake for %s...\n", dep.Name)

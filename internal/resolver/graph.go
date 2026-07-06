@@ -107,7 +107,7 @@ func resolveSingle(dep model.Dependency, modulesBase, cachePath string) (*Resolv
 		} else if _, err := os.Stat(cmakeListsPath); err == nil {
 			resolvedType = "cmake"
 		} else {
-			resolvedType = "cmake"
+			resolvedType = "header_only"
 		}
 	}
 

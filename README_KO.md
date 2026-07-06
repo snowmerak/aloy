@@ -129,7 +129,7 @@ inject_cmake: "cmake/extra_logic.cmake"
 | `name` | O | 패키지 이름 (Git URL에서 자동 추론 가능) |
 | `git` | △ | Git 저장소 URL (system 타입이면 불필요) |
 | `version` | No | SemVer 제약 조건 (`^1.2.0`, `~1.0`, `>=1.0.0 <2.0.0`) |
-| `type` | No | 의존성 빌드 타입 (`"system"`, `"cmake"`, `"meson"`, `"aloy"`). 생략 시 파일 구성을 기반으로 자동 감지합니다. |
+| `type` | No | 의존성 빌드 타입 (`"system"`, `"cmake"`, `"meson"`, `"aloy"`, `"header_only"`). 생략 시 파일 구성을 기반으로 자동 감지합니다. |
 | `alias` | No | 모듈로 저장되는 별칭 (이름 중복 방지) |
 | `subdir` | No | 모노레포 패키지를 위한 하위 디렉토리 명시 (예: `libs/foo`) |
 | `cmake_target` | No | `target_link_libraries`에 사용될 타겟명 오버라이드 |
@@ -223,6 +223,14 @@ aloy가 의존성 타입을 `"meson"`으로 감지할 경우(명시적으로 `ty
 1. `aloy sync` 실행 시 백그라운드에서 `meson setup build --prefix=<install_path>`, `meson compile`, `meson install`을 순차적으로 호출하여 의존성을 자동 빌드합니다.
 2. 컴파일된 결과물(정적/동적 라이브러리 및 공용 헤더)은 로컬 스테이징 폴더 `.my_modules/<logical_name>_install/`에 수집됩니다.
 3. 생성되는 마스터 `CMakeLists.txt` 내에 `add_library(<name> INTERFACE IMPORTED)` 타겟이 추가되며, 스테이징 영역에서 발견된 모든 라이브러리 파일이 `INTERFACE_LINK_LIBRARIES`를 통해 링크되고 헤더 파일은 `INTERFACE_INCLUDE_DIRECTORIES`로 매핑됩니다.
+
+### 헤더 온리(Header-only) 연동
+
+aloy가 의존성 타입을 `"header_only"`로 감지할 경우(명시적으로 `type: header_only`를 지정했거나, 저장소 내에 `project.yaml`, `meson.build`, `CMakeLists.txt`가 모두 존재하지 않을 경우):
+
+1. `aloy sync` 실행 시 빌드나 컴파일 단계를 실행하지 않고 완전히 생략합니다.
+2. 저장소 디렉터리 내에서 일반적인 헤더 폴더(우선순위: `single_include`, `include`, `includes`, `src`, 혹은 루트 폴더)를 자동 스캔합니다.
+3. 생성되는 마스터 `CMakeLists.txt` 내에 `add_library(<name> INTERFACE IMPORTED)` 타겟을 추가하고, 스캔된 헤더 폴더 경로를 `INTERFACE_INCLUDE_DIRECTORIES`로 매핑합니다.
 
 ### 전이 의존성과 `cmake_target`
 
