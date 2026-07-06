@@ -128,7 +128,7 @@ func writeDependencies(b *strings.Builder, cfg *model.ProjectConfig, resolvedDep
 
 		if rd.Type == "meson" {
 			installDir := filepath.Join(projectRoot, resolver.ModulesDir, rd.LogicalName+"_install")
-			libPath, err := findLibraryFile(installDir, rd.LogicalName)
+			libPaths, err := findLibraryFiles(installDir)
 
 			includeDir := filepath.Join(installDir, "include")
 			includeRelPath := filepath.Join(resolver.ModulesDir, rd.LogicalName+"_install", "include")
@@ -143,15 +143,19 @@ func writeDependencies(b *strings.Builder, cfg *model.ProjectConfig, resolvedDep
 				fmt.Fprintf(b, "    INTERFACE_INCLUDE_DIRECTORIES \"${CMAKE_CURRENT_SOURCE_DIR}/%s\"\n", includeCMakePath)
 				fmt.Fprintf(b, ")\n")
 			} else {
-				relLibPath, relErr := filepath.Rel(projectRoot, libPath)
-				if relErr != nil {
-					relLibPath = libPath
+				var cmakeLibPaths []string
+				for _, p := range libPaths {
+					relLibPath, relErr := filepath.Rel(projectRoot, p)
+					if relErr != nil {
+						relLibPath = p
+					}
+					cmakeLibPaths = append(cmakeLibPaths, "${CMAKE_CURRENT_SOURCE_DIR}/"+filepath.ToSlash(relLibPath))
 				}
-				libCMakePath := filepath.ToSlash(relLibPath)
+				joinedLibs := strings.Join(cmakeLibPaths, ";")
 
-				fmt.Fprintf(b, "add_library(%s UNKNOWN IMPORTED)\n", targetName)
+				fmt.Fprintf(b, "add_library(%s INTERFACE IMPORTED)\n", targetName)
 				fmt.Fprintf(b, "set_target_properties(%s PROPERTIES\n", targetName)
-				fmt.Fprintf(b, "    IMPORTED_LOCATION \"${CMAKE_CURRENT_SOURCE_DIR}/%s\"\n", libCMakePath)
+				fmt.Fprintf(b, "    INTERFACE_LINK_LIBRARIES %q\n", joinedLibs)
 				fmt.Fprintf(b, "    INTERFACE_INCLUDE_DIRECTORIES \"${CMAKE_CURRENT_SOURCE_DIR}/%s\"\n", includeCMakePath)
 				fmt.Fprintf(b, ")\n")
 			}
@@ -179,7 +183,7 @@ func writeDependencies(b *strings.Builder, cfg *model.ProjectConfig, resolvedDep
 	}
 }
 
-func findLibraryFile(installDir string, name string) (string, error) {
+func findLibraryFiles(installDir string) ([]string, error) {
 	libDirs := []string{
 		filepath.Join(installDir, "lib"),
 		filepath.Join(installDir, "lib64"),
@@ -204,18 +208,10 @@ func findLibraryFile(installDir string, name string) (string, error) {
 	}
 
 	if len(candidates) == 0 {
-		return "", fmt.Errorf("no library file found in install directory %s", installDir)
+		return nil, fmt.Errorf("no library file found in install directory %s", installDir)
 	}
 
-	nameLower := strings.ToLower(name)
-	for _, cand := range candidates {
-		base := strings.ToLower(filepath.Base(cand))
-		if strings.Contains(base, nameLower) {
-			return cand, nil
-		}
-	}
-
-	return candidates[0], nil
+	return candidates, nil
 }
 
 func writeTargets(b *strings.Builder, cfg *model.ProjectConfig, projectRoot string) error {
