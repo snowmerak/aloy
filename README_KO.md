@@ -24,6 +24,7 @@ go install github.com/snowmerak/aloy@latest
 - `git`
 - `cmake` (>= 3.15)
 - C++ 컴파일러 (GCC, Clang, MSVC 등)
+- `meson` 및 `ninja` (Meson 의존성을 사용하는 경우 필요)
 
 ## 빠른 시작
 
@@ -128,7 +129,7 @@ inject_cmake: "cmake/extra_logic.cmake"
 | `name` | O | 패키지 이름 (Git URL에서 자동 추론 가능) |
 | `git` | △ | Git 저장소 URL (system 타입이면 불필요) |
 | `version` | No | SemVer 제약 조건 (`^1.2.0`, `~1.0`, `>=1.0.0 <2.0.0`) |
-| `type` | No | `"system"` 설정 시 시스템 패키지 검색 (`find_package()`) |
+| `type` | No | 의존성 빌드 타입 (`"system"`, `"cmake"`, `"meson"`, `"aloy"`). 생략 시 파일 구성을 기반으로 자동 감지합니다. |
 | `alias` | No | 모듈로 저장되는 별칭 (이름 중복 방지) |
 | `subdir` | No | 모노레포 패키지를 위한 하위 디렉토리 명시 (예: `libs/foo`) |
 | `cmake_target` | No | `target_link_libraries`에 사용될 타겟명 오버라이드 |
@@ -174,6 +175,7 @@ aloy add <name> --system                        # 시스템 패키지 추가
 aloy add <git_url> --cmake-option KEY=VAL       # CMake 옵션 추가 (반복 가능)
 aloy add <git_url> --cmake-target target_name   # CMake 타겟 이름 지정
 aloy add <git_url> --subdir path/to/pkg         # 모노레포 하위 폴더 지정
+aloy add <git_url> --type <type>                # 명시적 타입 지정 (system, cmake, meson, aloy)
 aloy add <git_url> -t mytarget                  # 특정 타겟에만 추가
 ```
 
@@ -213,6 +215,14 @@ aloy의 의존성 해석은 **BFS (너비 우선 탐색)** 기반으로 동작�
 7. 단, **메이저 버전 충돌**이 발생할 경우 `alias` 옵션을 사용하라는 힌트와 함께 오류를 중단합니다.
 8. 조건과 일치하는 태그가 없으면 기본 브랜치(`master` 또는 `main`)로 fallback됩니다.
 9. 동기화된 타겟이 aloy 패키지인 경우(`project.yaml` 존재) 서브 의존성을 재귀적으로 확보합니다.
+
+### Meson 연동
+
+aloy가 의존성 타입을 `"meson"`으로 감지할 경우(명시적으로 `type: meson`을 지정했거나, 저장소 루트/하위 폴더에 `meson.build` 파일이 존재할 경우):
+
+1. `aloy sync` 실행 시 백그라운드에서 `meson setup build --prefix=<install_path>`, `meson compile`, `meson install`을 순차적으로 호출하여 의존성을 자동 빌드합니다.
+2. 컴파일된 결과물(정적/동적 라이브러리 및 공용 헤더)은 로컬 스테이징 폴더 `.my_modules/<logical_name>_install/`에 수집됩니다.
+3. 생성되는 마스터 `CMakeLists.txt` 내에 `add_library(<name> INTERFACE IMPORTED)` 타겟이 추가되며, 스테이징 영역에서 발견된 모든 라이브러리 파일이 `INTERFACE_LINK_LIBRARIES`를 통해 링크되고 헤더 파일은 `INTERFACE_INCLUDE_DIRECTORIES`로 매핑됩니다.
 
 ### 전이 의존성과 `cmake_target`
 

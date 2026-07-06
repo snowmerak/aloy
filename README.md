@@ -24,6 +24,7 @@ The following tools must be available on your system PATH:
 - `git`
 - `cmake` (>= 3.15)
 - A C++ compiler (GCC, Clang, MSVC, etc.)
+- `meson` and `ninja` (required if utilizing Meson dependencies)
 
 ## Quick Start
 
@@ -128,7 +129,7 @@ inject_cmake: "cmake/extra_logic.cmake"
 | `name` | Yes | Package name (auto-inferred from Git URL) |
 | `git` | Cond. | Git repository URL (not needed for system type) |
 | `version` | No | SemVer constraint (`^1.2.0`, `~1.0`, `>=1.0.0 <2.0.0`) |
-| `type` | No | Set to `"system"` to use `find_package()` |
+| `type` | No | Dependency type (`"system"`, `"cmake"`, `"meson"`, `"aloy"`). Omitted defaults to auto-detecting based on the files in repository. |
 | `alias` | No | Alias — used as the directory name and reference name |
 | `subdir` | No | Subdirectory path for monorepo packages (e.g. `libs/foo`) |
 | `cmake_target` | No | CMake target name for linking (when it differs from the package name) |
@@ -174,6 +175,7 @@ aloy add <name> --system                        # System package (find_package)
 aloy add <git_url> --cmake-option KEY=VAL       # CMake option (repeatable)
 aloy add <git_url> --cmake-target target_name   # CMake target name override
 aloy add <git_url> --subdir path/to/pkg         # Monorepo subdirectory
+aloy add <git_url> --type <type>                # Explicitly set type (system, cmake, meson, aloy)
 aloy add <git_url> -t mytarget                  # Add to a specific target
 ```
 
@@ -213,6 +215,14 @@ aloy resolves dependencies using **BFS (breadth-first search)**:
 7. If **major versions conflict**, an error is raised with a hint to use `alias`
 8. Repositories without matching tags fall back to the default branch (`main` → `master`)
 9. If a dependency is an aloy package (has `project.yaml`), its sub-dependencies are resolved recursively
+
+### Meson Integration
+
+When `aloy` detects a dependency of type `"meson"` (either explicitly specified via `type: meson` or auto-detected by the presence of `meson.build` in the repository's root/subdirectory):
+
+1. During `aloy sync`, it executes `meson setup build --prefix=<install_path>`, `meson compile`, and `meson install` to build and stage the package locally.
+2. The compiled outputs (static/shared libraries and headers) are gathered inside `.my_modules/<logical_name>_install/`.
+3. In the root `CMakeLists.txt`, an `INTERFACE IMPORTED` target is generated. All compiled libraries found in the staging area are linked via `INTERFACE_LINK_LIBRARIES` and headers are linked via `INTERFACE_INCLUDE_DIRECTORIES`.
 
 ### Transitive Dependencies and `cmake_target`
 
