@@ -42,11 +42,14 @@ type Dependency struct {
 	Name         string            `yaml:"name"`
 	Git          string            `yaml:"git,omitempty"`
 	Version      string            `yaml:"version,omitempty"`
-	Type         string            `yaml:"type,omitempty"` // "" (git), "system", "cmake", "meson", "aloy", "header_only"
+	Type         string            `yaml:"type,omitempty"` // "" (git), "system", "cmake", "meson", "aloy", "header_only", "custom"
 	Alias        string            `yaml:"alias,omitempty"`
 	Subdir       string            `yaml:"subdir,omitempty"`
 	CMakeTarget  string            `yaml:"cmake_target,omitempty"`
 	CMakeOptions map[string]string `yaml:"cmake_options,omitempty"`
+	BuildCommand string            `yaml:"build_command,omitempty"`
+	IncludeDirs  []string          `yaml:"include_dirs,omitempty"`
+	LibDirs      []string          `yaml:"lib_dirs,omitempty"`
 }
 
 // TargetName returns the alias if set, otherwise the name.

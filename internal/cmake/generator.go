@@ -126,6 +126,54 @@ func writeDependencies(b *strings.Builder, cfg *model.ProjectConfig, resolvedDep
 			targetName = dep.CMakeTarget
 		}
 
+		if rd.Type == "custom" {
+			repoPath := filepath.Join(projectRoot, resolver.ModulesDir, rd.RepoDir, rd.Subdir)
+
+			var includeCMakePath string
+			if len(rd.IncludeDirs) > 0 {
+				var includeCMakePaths []string
+				for _, inc := range rd.IncludeDirs {
+					relIncPath := filepath.Join(resolver.ModulesDir, rd.RepoDir, rd.Subdir, inc)
+					includeCMakePaths = append(includeCMakePaths, "${CMAKE_CURRENT_SOURCE_DIR}/"+filepath.ToSlash(relIncPath))
+				}
+				includeCMakePath = strings.Join(includeCMakePaths, ";")
+			} else {
+				includeSub := findHeaderIncludeDir(repoPath)
+				includeRelPath := filepath.Join(resolver.ModulesDir, rd.RepoDir, rd.Subdir, includeSub)
+				includeCMakePath = "${CMAKE_CURRENT_SOURCE_DIR}/" + filepath.ToSlash(includeRelPath)
+			}
+
+			relativeDirs := rd.LibDirs
+			if len(relativeDirs) == 0 {
+				relativeDirs = []string{".", "lib", "build", "bin"}
+			}
+			libPaths, err := findLibraryFilesDirs(repoPath, relativeDirs)
+
+			if err != nil {
+				fmt.Fprintf(b, "add_library(%s INTERFACE IMPORTED)\n", targetName)
+				fmt.Fprintf(b, "set_target_properties(%s PROPERTIES\n", targetName)
+				fmt.Fprintf(b, "    INTERFACE_INCLUDE_DIRECTORIES %q\n", includeCMakePath)
+				fmt.Fprintf(b, ")\n")
+			} else {
+				var cmakeLibPaths []string
+				for _, p := range libPaths {
+					relLibPath, relErr := filepath.Rel(projectRoot, p)
+					if relErr != nil {
+						relLibPath = p
+					}
+					cmakeLibPaths = append(cmakeLibPaths, "${CMAKE_CURRENT_SOURCE_DIR}/"+filepath.ToSlash(relLibPath))
+				}
+				joinedLibs := strings.Join(cmakeLibPaths, ";")
+
+				fmt.Fprintf(b, "add_library(%s INTERFACE IMPORTED)\n", targetName)
+				fmt.Fprintf(b, "set_target_properties(%s PROPERTIES\n", targetName)
+				fmt.Fprintf(b, "    INTERFACE_LINK_LIBRARIES %q\n", joinedLibs)
+				fmt.Fprintf(b, "    INTERFACE_INCLUDE_DIRECTORIES %q\n", includeCMakePath)
+				fmt.Fprintf(b, ")\n")
+			}
+			continue
+		}
+
 		if rd.Type == "header_only" {
 			repoPath := filepath.Join(projectRoot, resolver.ModulesDir, rd.RepoDir, rd.Subdir)
 			includeSub := findHeaderIncludeDir(repoPath)
@@ -236,6 +284,32 @@ func findHeaderIncludeDir(repoPath string) string {
 		}
 	}
 	return ""
+}
+
+func findLibraryFilesDirs(repoPath string, relativeDirs []string) ([]string, error) {
+	var candidates []string
+	for _, relDir := range relativeDirs {
+		dir := filepath.Join(repoPath, relDir)
+		files, err := os.ReadDir(dir)
+		if err != nil {
+			continue
+		}
+		for _, file := range files {
+			if file.IsDir() {
+				continue
+			}
+			ext := filepath.Ext(file.Name())
+			if ext == ".a" || ext == ".lib" || ext == ".so" || ext == ".dylib" {
+				candidates = append(candidates, filepath.Join(dir, file.Name()))
+			}
+		}
+	}
+
+	if len(candidates) == 0 {
+		return nil, fmt.Errorf("no library file found in custom lib directories %v inside %s", relativeDirs, repoPath)
+	}
+
+	return candidates, nil
 }
 
 func writeTargets(b *strings.Builder, cfg *model.ProjectConfig, projectRoot string) error {

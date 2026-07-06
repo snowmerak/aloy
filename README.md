@@ -118,6 +118,14 @@ targets:
         git: "https://github.com/Neargye/magic_enum.git"
         type: header_only
 
+      # Custom build system example (e.g. MSBuild or Make)
+      - name: custom_lib
+        git: "https://github.com/company/custom_lib.git"
+        type: custom
+        build_command: "make -j8"
+        include_dirs: ["include"]
+        lib_dirs: ["build/lib"]
+
       # Monorepo support via subdir
       - name: core_utils
         git: "https://github.com/company/monorepo.git"
@@ -134,11 +142,14 @@ inject_cmake: "cmake/extra_logic.cmake"
 | `name` | Yes | Package name (auto-inferred from Git URL) |
 | `git` | Cond. | Git repository URL (not needed for system type) |
 | `version` | No | SemVer constraint (`^1.2.0`, `~1.0`, `>=1.0.0 <2.0.0`) |
-| `type` | No | Dependency type (`"system"`, `"cmake"`, `"meson"`, `"aloy"`, `"header_only"`). Omitted defaults to auto-detecting based on the files in repository. |
+| `type` | No | Dependency type (`"system"`, `"cmake"`, `"meson"`, `"aloy"`, `"header_only"`, `"custom"`). Omitted defaults to auto-detecting based on the files in repository. |
 | `alias` | No | Alias — used as the directory name and reference name |
 | `subdir` | No | Subdirectory path for monorepo packages (e.g. `libs/foo`) |
 | `cmake_target` | No | CMake target name for linking (when it differs from the package name) |
 | `cmake_options` | No | `key: value` map — injected as `set(KEY VAL CACHE ... FORCE)` |
+| `build_command` | No | The shell command to run inside the dependency's directory for `"custom"` type |
+| `include_dirs` | No | Array of relative include directory paths for `"custom"` type |
+| `lib_dirs` | No | Array of relative library directory paths to scan for `"custom"` type |
 
 > **When is `cmake_target` needed?**
 > Some libraries have CMake target names that differ from their repository name.
@@ -236,6 +247,16 @@ When `aloy` detects a dependency of type `"header_only"` (either explicitly spec
 1. During `aloy sync`, it skips all compilation/build stages entirely.
 2. It automatically scans the repository for common header directories (specifically searching for `single_include`, `include`, `includes`, `src`, or falling back to the root directory).
 3. In the root `CMakeLists.txt`, `aloy` generates an `INTERFACE IMPORTED` target and maps the discovered header folder path under `INTERFACE_INCLUDE_DIRECTORIES`.
+
+### Custom Integration
+
+For legacy or non-standard build systems (such as MSBuild, Makefiles, or custom shell scripts), you can specify `type: custom` and describe how to compile and where the output files are located:
+
+1. **`build_command`**: The exact shell command to run inside the dependency's directory. `aloy` executes it using `cmd.exe /C` on Windows and `sh -c` on Unix-like systems.
+2. **`include_dirs`**: An array of relative paths inside the dependency to add to the include path. If not provided, it falls back to scanning common header directories.
+3. **`lib_dirs`**: An array of relative paths inside the dependency to scan for compiled libraries (`.lib`, `.a`, `.so`, `.dylib`). If not provided, it defaults to checking `[".", "lib", "build", "bin"]`.
+
+During `aloy sync`, the custom build command runs inside the dependency's directory. `aloy` scans the specified `lib_dirs` for libraries, and generates an `INTERFACE IMPORTED` target in the root `CMakeLists.txt` linking the found libraries and mapping include directories.
 
 ### Transitive Dependencies and `cmake_target`
 

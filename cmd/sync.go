@@ -5,6 +5,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 
 	"github.com/snowmerak/aloy/internal/cmake"
 	"github.com/snowmerak/aloy/internal/parser"
@@ -67,6 +68,12 @@ func runSync(dir string) error {
 			continue
 		}
 		if dep.Type == "header_only" {
+			continue
+		}
+		if dep.Type == "custom" {
+			if err := buildCustomDependency(dir, dep); err != nil {
+				return fmt.Errorf("failed to build custom dependency %s: %w", dep.Name, err)
+			}
 			continue
 		}
 		if dep.IsAloyPackage {
@@ -156,6 +163,34 @@ func buildMesonDependency(dir string, dep resolver.ResolvedDep) error {
 	installCmd.Env = env
 	if err := installCmd.Run(); err != nil {
 		return fmt.Errorf("meson install failed: %w", err)
+	}
+
+	return nil
+}
+
+func buildCustomDependency(dir string, dep resolver.ResolvedDep) error {
+	if dep.BuildCommand == "" {
+		fmt.Printf("  [Custom] %s has no build command, skipping build.\n", dep.Name)
+		return nil
+	}
+
+	sourcePath := filepath.Join(dir, resolver.ModulesDir, dep.RepoDir, dep.Subdir)
+	fmt.Printf("  [Custom] Building %s using command: %s\n", dep.Name, dep.BuildCommand)
+
+	var cmd *exec.Cmd
+	if runtime.GOOS == "windows" {
+		cmd = exec.Command("cmd.exe", "/C", dep.BuildCommand)
+	} else {
+		cmd = exec.Command("sh", "-c", dep.BuildCommand)
+	}
+
+	cmd.Dir = sourcePath
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	cmd.Env = append(os.Environ(), "VSLANG=1033", "PYTHONIOENCODING=utf-8", "LANG=en_US.UTF-8", "LC_ALL=en_US.UTF-8")
+
+	if err := cmd.Run(); err != nil {
+		return fmt.Errorf("custom build command failed: %w", err)
 	}
 
 	return nil

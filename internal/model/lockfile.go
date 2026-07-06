@@ -17,8 +17,11 @@ type LockedPackage struct {
 	CommitSHA       string `yaml:"commit_sha"`
 	CMakeTarget     string `yaml:"cmake_target,omitempty"`
 	IsAloyPackage   bool   `yaml:"is_aloy_package,omitempty"`
-	IsSystem        bool   `yaml:"is_system,omitempty"`
-	Type            string `yaml:"type,omitempty"`
+	IsSystem        bool     `yaml:"is_system,omitempty"`
+	Type            string   `yaml:"type,omitempty"`
+	BuildCommand    string   `yaml:"build_command,omitempty"`
+	IncludeDirs     []string `yaml:"include_dirs,omitempty"`
+	LibDirs         []string `yaml:"lib_dirs,omitempty"`
 }
 
 // FindPackage returns the locked package by name, or nil if not found.

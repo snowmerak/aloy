@@ -118,6 +118,14 @@ targets:
         git: "https://github.com/Neargye/magic_enum.git"
         type: header_only
 
+      # 커스텀 빌드 도구 연동 예시 (예: MSBuild 또는 Make)
+      - name: custom_lib
+        git: "https://github.com/company/custom_lib.git"
+        type: custom
+        build_command: "make -j8"
+        include_dirs: ["include"]
+        lib_dirs: ["build/lib"]
+
       # 모노레포 지원 (subdir 옵션)
       - name: core_utils
         git: "https://github.com/company/monorepo.git"
@@ -134,11 +142,14 @@ inject_cmake: "cmake/extra_logic.cmake"
 | `name` | O | 패키지 이름 (Git URL에서 자동 추론 가능) |
 | `git` | △ | Git 저장소 URL (system 타입이면 불필요) |
 | `version` | No | SemVer 제약 조건 (`^1.2.0`, `~1.0`, `>=1.0.0 <2.0.0`) |
-| `type` | No | 의존성 빌드 타입 (`"system"`, `"cmake"`, `"meson"`, `"aloy"`, `"header_only"`). 생략 시 파일 구성을 기반으로 자동 감지합니다. |
+| `type` | No | 의존성 빌드 타입 (`"system"`, `"cmake"`, `"meson"`, `"aloy"`, `"header_only"`, `"custom"`). 생략 시 파일 구성을 기반으로 자동 감지합니다. |
 | `alias` | No | 모듈로 저장되는 별칭 (이름 중복 방지) |
 | `subdir` | No | 모노레포 패키지를 위한 하위 디렉토리 명시 (예: `libs/foo`) |
 | `cmake_target` | No | `target_link_libraries`에 사용될 타겟명 오버라이드 |
 | `cmake_options` | No | `키: 값` 쌍 — CMake CACHE 변수로 주입 |`set(KEY VAL CACHE ... FORCE)` 로 주입 |
+| `build_command` | No | `"custom"` 타입의 경우 의존성 디렉터리 내에서 실행할 쉘 빌드 명령 |
+| `include_dirs` | No | `"custom"` 타입의 경우 인클루드 경로에 추가할 하위 디렉터리 경로 배열 |
+| `lib_dirs` | No | `"custom"` 타입의 경우 컴파일 결과물(.lib/.a 등)을 검색할 하위 디렉터리 경로 배열 |
 
 > **`cmake_target`은 언제 필요한가?**
 > 일부 라이브러리는 CMake 타겟 이름이 저장소 이름과 다릅니다.
@@ -236,6 +247,16 @@ aloy가 의존성 타입을 `"header_only"`로 감지할 경우(명시적으로 
 1. `aloy sync` 실행 시 빌드나 컴파일 단계를 실행하지 않고 완전히 생략합니다.
 2. 저장소 디렉터리 내에서 일반적인 헤더 폴더(우선순위: `single_include`, `include`, `includes`, `src`, 혹은 루트 폴더)를 자동 스캔합니다.
 3. 생성되는 마스터 `CMakeLists.txt` 내에 `add_library(<name> INTERFACE IMPORTED)` 타겟을 추가하고, 스캔된 헤더 폴더 경로를 `INTERFACE_INCLUDE_DIRECTORIES`로 매핑합니다.
+
+### 커스텀(Custom) 연동
+
+Makefile, MSBuild, 혹은 독자적인 쉘 스크립트를 사용하여 빌드되는 비표준 의존성 프로젝트의 경우, `type: custom`을 선언하고 빌드 방식과 결과물 경로를 직접 명시하여 연동할 수 있습니다.
+
+1. **`build_command`**: 의존성 디렉터리 내에서 빌드를 실행할 쉘 명령입니다. Windows에서는 `cmd.exe /C`를 통해, Unix 계열 시스템에서는 `sh -c`를 통해 기동됩니다.
+2. **`include_dirs`**: 의존성 디렉터리 내부에서 프로젝트의 인클루드 경로에 바인딩할 하위 디렉터리 경로의 배열입니다. 지정하지 않을 경우, 일반적인 헤더 경로를 자동 탐색합니다.
+3. **`lib_dirs`**: 의존성 빌드 결과물(`.lib`, `.a`, `.so`, `.dylib`)을 스캔할 하위 디렉터리 경로의 배열입니다. 지정하지 않을 경우, `[".", "lib", "build", "bin"]` 경로들을 검사합니다.
+
+`aloy sync` 수행 시 지정된 빌드 명령이 해당 의존성 디렉터리 내부에서 동기 실행됩니다. 이후 `aloy`는 지정된 `lib_dirs` 내부의 바이너리들을 수집하여 마스터 `CMakeLists.txt` 내에 `INTERFACE IMPORTED` 타겟을 구성하고 인클루드 경로와 함께 바인딩합니다.
 
 ### 전이 의존성과 `cmake_target`
 

@@ -29,7 +29,10 @@ type ResolvedDep struct {
 	CMakeTarget     string // detected or overridden CMake project name
 	IsAloyPackage   bool   // has project.yaml
 	IsSystem        bool   // type: system
-	Type            string // "aloy", "cmake", "meson", "system"
+	Type            string // "aloy", "cmake", "meson", "system", "header_only", "custom"
+	BuildCommand    string
+	IncludeDirs     []string
+	LibDirs         []string
 }
 
 // resolveSingle resolves version from cache, clones referencing cache, and returns result.
@@ -128,6 +131,9 @@ func resolveSingle(dep model.Dependency, modulesBase, cachePath string) (*Resolv
 		IsAloyPackage:   isAloy,
 		IsSystem:        false,
 		Type:            resolvedType,
+		BuildCommand:    dep.BuildCommand,
+		IncludeDirs:     dep.IncludeDirs,
+		LibDirs:         dep.LibDirs,
 	}, nil
 }
 
@@ -302,6 +308,9 @@ func BuildLockFile(deps []ResolvedDep) *model.LockFile {
 			IsAloyPackage:   d.IsAloyPackage,
 			IsSystem:        d.IsSystem,
 			Type:            d.Type,
+			BuildCommand:    d.BuildCommand,
+			IncludeDirs:     d.IncludeDirs,
+			LibDirs:         d.LibDirs,
 		})
 	}
 	return lf
