@@ -42,7 +42,7 @@ type Dependency struct {
 	Name         string            `yaml:"name"`
 	Git          string            `yaml:"git,omitempty"`
 	Version      string            `yaml:"version,omitempty"`
-	Type         string            `yaml:"type,omitempty"` // "" (normal git), "system"
+	Type         string            `yaml:"type,omitempty"` // "" (git), "system", "cmake", "meson", "aloy"
 	Alias        string            `yaml:"alias,omitempty"`
 	Subdir       string            `yaml:"subdir,omitempty"`
 	CMakeTarget  string            `yaml:"cmake_target,omitempty"`

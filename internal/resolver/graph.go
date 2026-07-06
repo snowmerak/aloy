@@ -29,6 +29,7 @@ type ResolvedDep struct {
 	CMakeTarget     string // detected or overridden CMake project name
 	IsAloyPackage   bool   // has project.yaml
 	IsSystem        bool   // type: system
+	Type            string // "aloy", "cmake", "meson", "system"
 }
 
 // resolveSingle resolves version from cache, clones referencing cache, and returns result.
@@ -86,9 +87,28 @@ func resolveSingle(dep model.Dependency, modulesBase, cachePath string) (*Resolv
 	}
 
 	isAloy := false
-	projectYamlPath := filepath.Join(destPath, dep.Subdir, parser.ProjectFileName)
-	if _, err := os.Stat(projectYamlPath); err == nil {
-		isAloy = true
+	resolvedType := ""
+
+	if dep.Type != "" {
+		resolvedType = dep.Type
+		if resolvedType == "aloy" {
+			isAloy = true
+		}
+	} else {
+		projectYamlPath := filepath.Join(destPath, dep.Subdir, parser.ProjectFileName)
+		mesonBuildPath := filepath.Join(destPath, dep.Subdir, "meson.build")
+		cmakeListsPath := filepath.Join(destPath, dep.Subdir, "CMakeLists.txt")
+
+		if _, err := os.Stat(projectYamlPath); err == nil {
+			isAloy = true
+			resolvedType = "aloy"
+		} else if _, err := os.Stat(mesonBuildPath); err == nil {
+			resolvedType = "meson"
+		} else if _, err := os.Stat(cmakeListsPath); err == nil {
+			resolvedType = "cmake"
+		} else {
+			resolvedType = "cmake"
+		}
 	}
 
 	cmakeTarget := dep.Name
@@ -107,6 +127,7 @@ func resolveSingle(dep model.Dependency, modulesBase, cachePath string) (*Resolv
 		CMakeTarget:     cmakeTarget,
 		IsAloyPackage:   isAloy,
 		IsSystem:        false,
+		Type:            resolvedType,
 	}, nil
 }
 
@@ -153,6 +174,7 @@ func ResolveGraph(projectRoot string, cfg *model.ProjectConfig) ([]ResolvedDep, 
 						Name:        dep.Name,
 						LogicalName: logicalName,
 						IsSystem:    true,
+						Type:        "system",
 					}
 				}
 				continue
@@ -279,6 +301,7 @@ func BuildLockFile(deps []ResolvedDep) *model.LockFile {
 			CMakeTarget:     d.CMakeTarget,
 			IsAloyPackage:   d.IsAloyPackage,
 			IsSystem:        d.IsSystem,
+			Type:            d.Type,
 		})
 	}
 	return lf

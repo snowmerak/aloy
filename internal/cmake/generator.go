@@ -16,7 +16,7 @@ func GenerateMaster(projectRoot string, cfg *model.ProjectConfig, resolvedDeps [
 	var b strings.Builder
 
 	writeHeader(&b, cfg)
-	writeDependencies(&b, cfg, resolvedDeps)
+	writeDependencies(&b, cfg, resolvedDeps, projectRoot)
 	if err := writeTargets(&b, cfg, projectRoot); err != nil {
 		return err
 	}
@@ -83,7 +83,7 @@ func writeHeader(b *strings.Builder, cfg *model.ProjectConfig) {
 	}
 }
 
-func writeDependencies(b *strings.Builder, cfg *model.ProjectConfig, resolvedDeps []resolver.ResolvedDep) {
+func writeDependencies(b *strings.Builder, cfg *model.ProjectConfig, resolvedDeps []resolver.ResolvedDep, projectRoot string) {
 	// Build a lookup for resolved deps
 	depMap := make(map[string]*resolver.ResolvedDep)
 	for i := range resolvedDeps {
@@ -110,7 +110,7 @@ func writeDependencies(b *strings.Builder, cfg *model.ProjectConfig, resolvedDep
 		}
 	}
 
-	// Git packages: cmake_options + add_subdirectory
+	// Git packages: cmake_options + add_subdirectory OR imported target (meson)
 	for _, dep := range allDeps {
 		if dep.Type == "system" {
 			continue
@@ -118,6 +118,43 @@ func writeDependencies(b *strings.Builder, cfg *model.ProjectConfig, resolvedDep
 		logicalName := dep.ModuleDir()
 		rd := depMap[logicalName]
 		if rd == nil {
+			continue
+		}
+
+		targetName := dep.TargetName()
+		if dep.CMakeTarget != "" {
+			targetName = dep.CMakeTarget
+		}
+
+		if rd.Type == "meson" {
+			installDir := filepath.Join(projectRoot, resolver.ModulesDir, rd.LogicalName+"_install")
+			libPath, err := findLibraryFile(installDir, rd.LogicalName)
+
+			includeDir := filepath.Join(installDir, "include")
+			includeRelPath := filepath.Join(resolver.ModulesDir, rd.LogicalName+"_install", "include")
+			if _, errStat := os.Stat(includeDir); errStat != nil {
+				includeRelPath = filepath.Join(resolver.ModulesDir, rd.RepoDir, rd.Subdir)
+			}
+			includeCMakePath := filepath.ToSlash(includeRelPath)
+
+			if err != nil {
+				fmt.Fprintf(b, "add_library(%s INTERFACE IMPORTED)\n", targetName)
+				fmt.Fprintf(b, "set_target_properties(%s PROPERTIES\n", targetName)
+				fmt.Fprintf(b, "    INTERFACE_INCLUDE_DIRECTORIES \"${CMAKE_CURRENT_SOURCE_DIR}/%s\"\n", includeCMakePath)
+				fmt.Fprintf(b, ")\n")
+			} else {
+				relLibPath, relErr := filepath.Rel(projectRoot, libPath)
+				if relErr != nil {
+					relLibPath = libPath
+				}
+				libCMakePath := filepath.ToSlash(relLibPath)
+
+				fmt.Fprintf(b, "add_library(%s UNKNOWN IMPORTED)\n", targetName)
+				fmt.Fprintf(b, "set_target_properties(%s PROPERTIES\n", targetName)
+				fmt.Fprintf(b, "    IMPORTED_LOCATION \"${CMAKE_CURRENT_SOURCE_DIR}/%s\"\n", libCMakePath)
+				fmt.Fprintf(b, "    INTERFACE_INCLUDE_DIRECTORIES \"${CMAKE_CURRENT_SOURCE_DIR}/%s\"\n", includeCMakePath)
+				fmt.Fprintf(b, ")\n")
+			}
 			continue
 		}
 
@@ -140,6 +177,45 @@ func writeDependencies(b *strings.Builder, cfg *model.ProjectConfig, resolvedDep
 	if len(allDeps) > 0 {
 		b.WriteString("\n")
 	}
+}
+
+func findLibraryFile(installDir string, name string) (string, error) {
+	libDirs := []string{
+		filepath.Join(installDir, "lib"),
+		filepath.Join(installDir, "lib64"),
+		filepath.Join(installDir, "bin"),
+	}
+
+	var candidates []string
+	for _, dir := range libDirs {
+		files, err := os.ReadDir(dir)
+		if err != nil {
+			continue
+		}
+		for _, file := range files {
+			if file.IsDir() {
+				continue
+			}
+			ext := filepath.Ext(file.Name())
+			if ext == ".a" || ext == ".lib" || ext == ".so" || ext == ".dylib" {
+				candidates = append(candidates, filepath.Join(dir, file.Name()))
+			}
+		}
+	}
+
+	if len(candidates) == 0 {
+		return "", fmt.Errorf("no library file found in install directory %s", installDir)
+	}
+
+	nameLower := strings.ToLower(name)
+	for _, cand := range candidates {
+		base := strings.ToLower(filepath.Base(cand))
+		if strings.Contains(base, nameLower) {
+			return cand, nil
+		}
+	}
+
+	return candidates[0], nil
 }
 
 func writeTargets(b *strings.Builder, cfg *model.ProjectConfig, projectRoot string) error {
