@@ -14,7 +14,7 @@ C++ Package Manager & Meta Build System
 ## Installation
 
 ```bash
-go install github.com/snowmerak/aloy@latest
+go install github.com/aloy-io/aloy@latest
 ```
 
 ### Prerequisites

@@ -7,9 +7,9 @@ import (
 	"path/filepath"
 	"runtime"
 
-	"github.com/snowmerak/aloy/internal/cmake"
-	"github.com/snowmerak/aloy/internal/parser"
-	"github.com/snowmerak/aloy/internal/resolver"
+	"github.com/aloy-io/aloy/internal/cmake"
+	"github.com/aloy-io/aloy/internal/parser"
+	"github.com/aloy-io/aloy/internal/resolver"
 	"github.com/spf13/cobra"
 )
 

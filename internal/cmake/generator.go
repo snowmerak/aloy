@@ -6,9 +6,9 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/snowmerak/aloy/internal/model"
-	"github.com/snowmerak/aloy/internal/parser"
-	"github.com/snowmerak/aloy/internal/resolver"
+	"github.com/aloy-io/aloy/internal/model"
+	"github.com/aloy-io/aloy/internal/parser"
+	"github.com/aloy-io/aloy/internal/resolver"
 )
 
 // GenerateMaster creates the root CMakeLists.txt for the project.

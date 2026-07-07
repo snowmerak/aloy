@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/snowmerak/aloy/internal/model"
+	"github.com/aloy-io/aloy/internal/model"
 	"gopkg.in/yaml.v3"
 )
 

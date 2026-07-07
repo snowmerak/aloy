@@ -1,6 +1,6 @@
 package main
 
-import "github.com/snowmerak/aloy/cmd"
+import "github.com/aloy-io/aloy/cmd"
 
 func main() {
 	cmd.Execute()

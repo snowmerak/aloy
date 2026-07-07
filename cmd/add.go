@@ -6,8 +6,8 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/snowmerak/aloy/internal/model"
-	"github.com/snowmerak/aloy/internal/parser"
+	"github.com/aloy-io/aloy/internal/model"
+	"github.com/aloy-io/aloy/internal/parser"
 	"github.com/spf13/cobra"
 )
 

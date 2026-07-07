@@ -1,4 +1,4 @@
-module github.com/snowmerak/aloy
+module github.com/aloy-io/aloy
 
 go 1.26.1
 

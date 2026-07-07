@@ -5,7 +5,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/snowmerak/aloy/internal/resolver"
+	"github.com/aloy-io/aloy/internal/resolver"
 	"github.com/spf13/cobra"
 )
 

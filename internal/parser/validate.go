@@ -3,7 +3,7 @@ package parser
 import (
 	"fmt"
 
-	"github.com/snowmerak/aloy/internal/model"
+	"github.com/aloy-io/aloy/internal/model"
 )
 
 var validTargetTypes = map[string]bool{

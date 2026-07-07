@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/snowmerak/aloy/internal/scaffold"
+	"github.com/aloy-io/aloy/internal/scaffold"
 	"github.com/spf13/cobra"
 )
 

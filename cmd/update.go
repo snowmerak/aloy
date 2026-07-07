@@ -5,10 +5,10 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/snowmerak/aloy/internal/git"
-	"github.com/snowmerak/aloy/internal/model"
-	"github.com/snowmerak/aloy/internal/parser"
-	"github.com/snowmerak/aloy/internal/resolver"
+	"github.com/aloy-io/aloy/internal/git"
+	"github.com/aloy-io/aloy/internal/model"
+	"github.com/aloy-io/aloy/internal/parser"
+	"github.com/aloy-io/aloy/internal/resolver"
 	"github.com/spf13/cobra"
 )
 

@@ -14,7 +14,7 @@ C++ 패키지 매니저 & 메타 빌드 시스템
 ## 설치
 
 ```bash
-go install github.com/snowmerak/aloy@latest
+go install github.com/aloy-io/aloy@latest
 ```
 
 ### 전제 조건
